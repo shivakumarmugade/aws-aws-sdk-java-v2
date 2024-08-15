@@ -15,6 +15,9 @@
 
 package software.amazon.awssdk.core.internal.http.pipeline.stages;
 
+import static software.amazon.awssdk.core.internal.util.ProgressListenerUtils.updateProgressListenersWithResponseStatus;
+import static software.amazon.awssdk.core.internal.util.ProgressListenerUtils.wrapWithBytesReadTrackingStream;
+
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 import software.amazon.awssdk.annotations.SdkInternalApi;
@@ -45,10 +48,11 @@ public class HandleResponseStage<OutputT> implements RequestPipeline<SdkHttpFull
 
     @Override
     public Response<OutputT> execute(SdkHttpFullResponse httpResponse, RequestExecutionContext context) throws Exception {
+
+        updateProgressListenersWithResponseStatus(context.progressUpdater(), httpResponse);
         SdkHttpFullResponse bytesReadTracking = trackBytesRead(httpResponse, context);
 
         Response<OutputT> response = responseHandler.handle(bytesReadTracking, context.executionAttributes());
-
         collectMetrics(context);
 
         return response;
@@ -85,7 +89,11 @@ public class HandleResponseStage<OutputT> implements RequestPipeline<SdkHttpFull
 
     private AbortableInputStream trackBytesRead(AbortableInputStream content, RequestExecutionContext context) {
         AtomicLong bytesRead = context.executionAttributes().getAttribute(SdkInternalExecutionAttribute.RESPONSE_BYTES_READ);
-        BytesReadTrackingInputStream bytesReadTrackedStream = new BytesReadTrackingInputStream(content, bytesRead);
+
+        BytesReadTrackingInputStream bytesReadTrackedStream =
+            wrapWithBytesReadTrackingStream(
+                content, bytesRead, context.progressUpdater());
+
         return AbortableInputStream.create(bytesReadTrackedStream);
     }
 }

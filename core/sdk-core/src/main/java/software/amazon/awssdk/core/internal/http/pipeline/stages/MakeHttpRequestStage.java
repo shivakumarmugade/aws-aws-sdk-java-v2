@@ -16,6 +16,7 @@
 package software.amazon.awssdk.core.internal.http.pipeline.stages;
 
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicLong;
 import software.amazon.awssdk.annotations.SdkInternalApi;
 import software.amazon.awssdk.core.client.config.SdkClientOption;
 import software.amazon.awssdk.core.interceptor.SdkInternalExecutionAttribute;
@@ -23,8 +24,12 @@ import software.amazon.awssdk.core.internal.http.HttpClientDependencies;
 import software.amazon.awssdk.core.internal.http.InterruptMonitor;
 import software.amazon.awssdk.core.internal.http.RequestExecutionContext;
 import software.amazon.awssdk.core.internal.http.pipeline.RequestPipeline;
+import software.amazon.awssdk.core.internal.metrics.BytesReadTrackingInputStream;
 import software.amazon.awssdk.core.internal.util.MetricUtils;
+import software.amazon.awssdk.core.internal.util.ProgressListenerUtils;
 import software.amazon.awssdk.core.metrics.CoreMetric;
+import software.amazon.awssdk.http.AbortableInputStream;
+import software.amazon.awssdk.http.ContentStreamProvider;
 import software.amazon.awssdk.http.ExecutableHttpRequest;
 import software.amazon.awssdk.http.HttpExecuteRequest;
 import software.amazon.awssdk.http.HttpExecuteResponse;
@@ -61,15 +66,29 @@ public class MakeHttpRequestStage
     }
 
     private HttpExecuteResponse executeHttpRequest(SdkHttpFullRequest request, RequestExecutionContext context) throws Exception {
+
         MetricCollector attemptMetricCollector = context.attemptMetricCollector();
 
         MetricCollector httpMetricCollector = MetricUtils.createHttpMetricsCollector(context);
+
+        ContentStreamProvider contentStreamProvider = null;
+        if (request.contentStreamProvider().isPresent()) {
+            AtomicLong bytesRead = context.executionAttributes()
+                                          .getAttribute(SdkInternalExecutionAttribute.RESPONSE_BYTES_READ);
+
+            BytesReadTrackingInputStream wrappedByteTracking = ProgressListenerUtils.wrapWithBytesReadTrackingStream(
+                AbortableInputStream.create(request.contentStreamProvider().get().newStream()),
+                bytesRead,
+                context.progressUpdater());
+
+            contentStreamProvider = ContentStreamProvider.fromInputStream(wrappedByteTracking);
+        }
 
         ExecutableHttpRequest requestCallable = sdkHttpClient
             .prepareRequest(HttpExecuteRequest.builder()
                                               .request(request)
                                               .metricCollector(httpMetricCollector)
-                                              .contentStreamProvider(request.contentStreamProvider().orElse(null))
+                                              .contentStreamProvider(contentStreamProvider)
                                               .build());
 
         context.apiCallTimeoutTracker().abortable(requestCallable);

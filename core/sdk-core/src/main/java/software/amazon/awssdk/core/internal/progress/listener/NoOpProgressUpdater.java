@@ -20,38 +20,26 @@ import software.amazon.awssdk.core.SdkResponse;
 import software.amazon.awssdk.http.SdkHttpRequest;
 
 @SdkInternalApi
-public interface ProgressUpdater {
-    default void updateRequestContentLength(Long requestContentLength) {
+public class NoOpProgressUpdater implements ProgressUpdater {
+
+    @Override
+    public void requestPrepared(SdkHttpRequest httpRequest) {
     }
 
-    default void updateResponseContentLength(Long responseContentLength) {
+    @Override
+    public void responseHeaderReceived() {
     }
 
-    void requestPrepared(SdkHttpRequest httpRequest);
-
-    default void requestHeaderSent() {
+    @Override
+    public void executionSuccess(SdkResponse response) {
     }
 
-    default void resetBytesSent() {
+    @Override
+    public void executionFailure(Throwable t) {
     }
 
-    default void resetBytesReceived() {
-    }
-
-    default void incrementBytesSent(long numBytes) {
-    }
-
-    default void incrementBytesReceived(long numBytes) {
-    }
-
-    void responseHeaderReceived();
-
-    void executionSuccess(SdkResponse response);
-
-    void executionFailure(Throwable t);
-
-    void attemptFailure(Throwable t);
-
-    default void attemptFailureResponseBytesReceived(Throwable t){
+    @Override
+    public void attemptFailure(Throwable t) {
     }
 }
+
