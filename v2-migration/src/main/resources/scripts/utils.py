@@ -23,15 +23,15 @@ RECIPE_ROOT_DIR = os.path.join(RESOURCES_ROOT_DIR, 'META-INF/rewrite')
 
 def find_sdk_version():
     pom = open(os.path.join(PROJECT_DIR, "pom.xml"), 'r')
-    reg = re.compile("<version>.+")
+    reg = re.compile("<awsjavasdk.previous.version>.+")
     version = re.search(reg, pom.read())
     versionStr = version.group(0)
-    return versionStr[9:-10]
+    return versionStr[29:-30]
 
 
 def load_module_mappings(filename):
     mappings = {}
-    with open(filename, mode='r', newline='', encoding='utf-8') as file:
+    with open(filename, mode='r') as file:
         reader = csv.reader(file)
         for row in reader:
             if row:

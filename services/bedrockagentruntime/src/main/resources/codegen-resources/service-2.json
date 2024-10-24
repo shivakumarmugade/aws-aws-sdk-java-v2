@@ -5,11 +5,13 @@
     "endpointPrefix":"bedrock-agent-runtime",
     "jsonVersion":"1.1",
     "protocol":"rest-json",
+    "protocols":["rest-json"],
     "serviceFullName":"Agents for Amazon Bedrock Runtime",
     "serviceId":"Bedrock Agent Runtime",
     "signatureVersion":"v4",
     "signingName":"bedrock",
-    "uid":"bedrock-agent-runtime-2023-07-26"
+    "uid":"bedrock-agent-runtime-2023-07-26",
+    "auth":["aws.auth#sigv4"]
   },
   "operations":{
     "DeleteAgentMemory":{
@@ -143,7 +145,7 @@
         {"shape":"AccessDeniedException"},
         {"shape":"ServiceQuotaExceededException"}
       ],
-      "documentation":"<p>Queries a knowledge base and generates responses based on the retrieved results. The response only cites sources that are relevant to the query.</p>"
+      "documentation":"<p>Queries a knowledge base and generates responses based on the retrieved results and using the specified foundation model or <a href=\"https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html\">inference profile</a>. The response only cites sources that are relevant to the query.</p>"
     }
   },
   "shapes":{
@@ -215,6 +217,14 @@
       "type":"string",
       "sensitive":true
     },
+    "ActionInvocationType":{
+      "type":"string",
+      "enum":[
+        "RESULT",
+        "USER_CONFIRMATION",
+        "USER_CONFIRMATION_AND_RESULT"
+      ]
+    },
     "AdditionalModelRequestFields":{
       "type":"map",
       "key":{"shape":"AdditionalModelRequestFieldsKey"},
@@ -261,6 +271,10 @@
         "actionGroup":{
           "shape":"String",
           "documentation":"<p>The action group that the API operation belongs to.</p>"
+        },
+        "actionInvocationType":{
+          "shape":"ActionInvocationType",
+          "documentation":"<p>Contains information about the API operation to invoke.</p>"
         },
         "apiPath":{
           "shape":"ApiPath",
@@ -329,6 +343,10 @@
           "shape":"ApiPath",
           "documentation":"<p>The path to the API operation.</p>"
         },
+        "confirmationState":{
+          "shape":"ConfirmationState",
+          "documentation":"<p>Controls the API operations or functions to invoke based on the user confirmation.</p>"
+        },
         "httpMethod":{
           "shape":"String",
           "documentation":"<p>The HTTP method for the API operation.</p>"
@@ -374,9 +392,9 @@
     },
     "BedrockModelArn":{
       "type":"string",
-      "max":1011,
-      "min":20,
-      "pattern":"^arn:aws(-[^:]+)?:bedrock:[a-z0-9-]{1,20}:(([0-9]{12}:custom-model/[a-z0-9-]{1,63}[.]{1}[a-z0-9-]{1,63}/[a-z0-9]{12})|(:foundation-model/[a-z0-9-]{1,63}[.]{1}[a-z0-9-]{1,63}))$"
+      "max":2048,
+      "min":1,
+      "pattern":"^(arn:aws(-[^:]{1,10})?:bedrock:[a-z0-9-]{1,20}:([0-9]{12})?:([a-z-]{1,20}/)?)?([a-z0-9.-]{1,63}){0,2}(([:][a-z0-9-]{1,63}){0,2})?(/[a-z0-9]{1,12})?$"
     },
     "Boolean":{
       "type":"boolean",
@@ -420,7 +438,7 @@
       "members":{
         "data":{
           "shape":"ByteContentBlob",
-          "documentation":"<p>The byte value of the file to attach, encoded as Base-64 string. The maximum size of all files that is attached is 10MB. You can attach a maximum of 5 files. </p>"
+          "documentation":"<p>The raw bytes of the file to attach. The maximum size of all files that is attached is 10MB. You can attach a maximum of 5 files. </p>"
         },
         "mediaType":{
           "shape":"MimeType",
@@ -482,6 +500,13 @@
         }
       },
       "documentation":"<p>Contains the JSON-formatted string returned by the API invoked by the code interpreter.</p>"
+    },
+    "ConfirmationState":{
+      "type":"string",
+      "enum":[
+        "CONFIRM",
+        "DENY"
+      ]
     },
     "ConflictException":{
       "type":"structure",
@@ -654,18 +679,18 @@
       "members":{
         "generationConfiguration":{
           "shape":"ExternalSourcesGenerationConfiguration",
-          "documentation":"<p>The prompt used with the external source wrapper object with the retrieveAndGenerate function.</p>"
+          "documentation":"<p>The prompt used with the external source wrapper object with the <code>retrieveAndGenerate</code> function.</p>"
         },
         "modelArn":{
           "shape":"BedrockModelArn",
-          "documentation":"<p>The modelArn used with the external source wrapper object in the retrieveAndGenerate function.</p>"
+          "documentation":"<p>The model Amazon Resource Name (ARN) for the external source wrapper object in the <code>retrieveAndGenerate</code> function.</p>"
         },
         "sources":{
           "shape":"ExternalSources",
-          "documentation":"<p>The document used with the external source wrapper object in the retrieveAndGenerate function.</p>"
+          "documentation":"<p>The document for the external source wrapper object in the <code>retrieveAndGenerate</code> function.</p>"
         }
       },
-      "documentation":"<p>The configurations of the external source wrapper object in the retrieveAndGenerate function.</p>"
+      "documentation":"<p>The configurations of the external source wrapper object in the <code>retrieveAndGenerate</code> function.</p>"
     },
     "FailureReasonString":{
       "type":"string",
@@ -952,6 +977,10 @@
           "shape":"String",
           "documentation":"<p>The action group that the function belongs to.</p>"
         },
+        "actionInvocationType":{
+          "shape":"ActionInvocationType",
+          "documentation":"<p>Contains information about the function to invoke,</p>"
+        },
         "function":{
           "shape":"String",
           "documentation":"<p>The name of the function.</p>"
@@ -992,6 +1021,10 @@
         "actionGroup":{
           "shape":"String",
           "documentation":"<p>The action group that the function belongs to.</p>"
+        },
+        "confirmationState":{
+          "shape":"ConfirmationState",
+          "documentation":"<p>Contains the user confirmation information about the function that was called.</p>"
         },
         "function":{
           "shape":"String",
@@ -1884,11 +1917,11 @@
         },
         "knowledgeBaseId":{
           "shape":"KnowledgeBaseId",
-          "documentation":"<p>The unique identifier of the knowledge base that is queried and the foundation model used for generation.</p>"
+          "documentation":"<p>The unique identifier of the knowledge base that is queried.</p>"
         },
         "modelArn":{
           "shape":"BedrockModelArn",
-          "documentation":"<p>The ARN of the foundation model used to generate a response.</p>"
+          "documentation":"<p>The ARN of the foundation model or <a href=\"https://docs.aws.amazon.com/bedrock/latest/userguide/cross-region-inference.html\">inference profile</a> used to generate a response.</p>"
         },
         "orchestrationConfiguration":{
           "shape":"OrchestrationConfiguration",
@@ -2111,8 +2144,19 @@
     },
     "OrchestrationConfiguration":{
       "type":"structure",
-      "required":["queryTransformationConfiguration"],
       "members":{
+        "additionalModelRequestFields":{
+          "shape":"AdditionalModelRequestFields",
+          "documentation":"<p> Additional model parameters and corresponding values not included in the textInferenceConfig structure for a knowledge base. This allows users to provide custom model parameters specific to the language model being used. </p>"
+        },
+        "inferenceConfig":{
+          "shape":"InferenceConfig",
+          "documentation":"<p> Configuration settings for inference when using RetrieveAndGenerate to generate responses while using a knowledge base as a source. </p>"
+        },
+        "promptTemplate":{
+          "shape":"PromptTemplate",
+          "documentation":"<p>Contains the template for the prompt that's sent to the model for response generation.</p>"
+        },
         "queryTransformationConfiguration":{
           "shape":"QueryTransformationConfiguration",
           "documentation":"<p>To split up the prompt and retrieve multiple sources, set the transformation type to <code>QUERY_DECOMPOSITION</code>.</p>"
@@ -2125,7 +2169,7 @@
       "members":{
         "metadata":{
           "shape":"Metadata",
-          "documentation":"<p>Contains information about the foundation model output.</p>"
+          "documentation":"<p>Contains information about the foundation model output from the orchestration step.</p>"
         },
         "rawResponse":{
           "shape":"RawResponse",
@@ -2247,9 +2291,17 @@
     "PostProcessingModelInvocationOutput":{
       "type":"structure",
       "members":{
+        "metadata":{
+          "shape":"Metadata",
+          "documentation":"<p> Contains information about the foundation model output from the post-processing step. </p>"
+        },
         "parsedResponse":{
           "shape":"PostProcessingParsedResponse",
           "documentation":"<p>Details about the response from the Lambda parsing of the output of the post-processing step.</p>"
+        },
+        "rawResponse":{
+          "shape":"RawResponse",
+          "documentation":"<p> Details of the raw response from the foundation model output. </p>"
         },
         "traceId":{
           "shape":"TraceId",
@@ -2289,9 +2341,17 @@
     "PreProcessingModelInvocationOutput":{
       "type":"structure",
       "members":{
+        "metadata":{
+          "shape":"Metadata",
+          "documentation":"<p> Contains information about the foundation model output from the pre-processing step. </p>"
+        },
         "parsedResponse":{
           "shape":"PreProcessingParsedResponse",
           "documentation":"<p>Details about the response from the Lambda parsing of the output of the pre-processing step.</p>"
+        },
+        "rawResponse":{
+          "shape":"RawResponse",
+          "documentation":"<p> Details of the raw response from the foundation model output. </p>"
         },
         "traceId":{
           "shape":"TraceId",
@@ -2597,7 +2657,6 @@
     "RetrievalFilterList":{
       "type":"list",
       "member":{"shape":"RetrievalFilter"},
-      "max":5,
       "min":2
     },
     "RetrievalResultConfluenceLocation":{
@@ -2728,15 +2787,15 @@
       "members":{
         "externalSourcesConfiguration":{
           "shape":"ExternalSourcesRetrieveAndGenerateConfiguration",
-          "documentation":"<p>The configuration used with the external source wrapper object in the retrieveAndGenerate function.</p>"
+          "documentation":"<p>The configuration for the external source wrapper object in the <code>retrieveAndGenerate</code> function.</p>"
         },
         "knowledgeBaseConfiguration":{
           "shape":"KnowledgeBaseRetrieveAndGenerateConfiguration",
-          "documentation":"<p>Contains details about the resource being queried.</p>"
+          "documentation":"<p>Contains details about the knowledge base for retrieving information and generating responses.</p>"
         },
         "type":{
           "shape":"RetrieveAndGenerateType",
-          "documentation":"<p>The type of resource that is queried by the request.</p>"
+          "documentation":"<p>The type of resource that contains your data for retrieving information and generating responses.</p> <p>If you choose ot use <code>EXTERNAL_SOURCES</code>, then currently only Claude 3 Sonnet models for knowledge bases are supported.</p>"
         }
       },
       "documentation":"<p>Contains details about the resource being queried.</p> <p>This data type is used in the following API operations:</p> <ul> <li> <p> <a href=\"https://docs.aws.amazon.com/bedrock/latest/APIReference/API_agent-runtime_RetrieveAndGenerate.html#API_agent-runtime_RetrieveAndGenerate_RequestSyntax\">RetrieveAndGenerate request</a> – in the <code>retrieveAndGenerateConfiguration</code> field</p> </li> </ul>"
